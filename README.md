@@ -264,7 +264,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 ## License
 
-This specification is released under the MIT License. See [LICENSE](./LICENSE) for details.
+This specification is released under the Apache 2.0 License. See [LICENSE](./LICENSE) for details.
 
 ---
 

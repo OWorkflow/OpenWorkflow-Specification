@@ -1,0 +1,188 @@
+workflows:
+  # Daily weather report workflow
+  - name: Daily Weather Report
+    version: 1.0.0
+    description: Generate and send a daily weather report for specified locations
+
+    inputs:
+      locations:
+        type: array
+        description: List of cities to get weather for
+        default: ["San Francisco", "New York", "London"]
+
+      notification_channel:
+        type: string
+        description: Slack channel for notifications
+        default: "#weather-reports"
+
+    triggers:
+      - type: schedule
+        cron: "0 8 * * *"  # Every day at 8am
+        timezone: "America/Los_Angeles"
+
+    steps:
+      # Fetch current weather for all locations
+      - name: fetch_weather
+        connector: connector:community/weather@1.0.0
+        action: get_current_weather
+        for_each: "{{ inputs.locations }}"
+        parallel: true
+        input:
+          location: "{{ item }}"
+
+      # Calculate stats
+      - name: calculate_stats
+        connector: connector:community/analytics@1.0.0
+        action: compute
+        input:
+          data: "{{ steps.fetch_weather.output }}"
+          operations:
+            - type: max
+              field: temperature
+            - type: min
+              field: temperature
+            - type: average
+              field: temperature
+
+      # Format report message
+      - name: format_report
+        connector: connector:community/text@1.0.0
+        action: template
+        input:
+          template: |
+            🌤️ Daily Weather Report
+
+            {% for weather in steps.fetch_weather.output %}
+            📍 {{ weather.location }}
+               Temperature: {{ weather.temperature }}°C
+               Wind: {{ weather.windspeed }} km/h
+
+            {% endfor %}
+
+            📊 Summary:
+            • Highest: {{ steps.calculate_stats.output.max }}°C
+            • Lowest: {{ steps.calculate_stats.output.min }}°C
+            • Average: {{ steps.calculate_stats.output.average | round(1) }}°C
+
+      # Send to Slack
+      - name: send_notification
+        connector: connector:community/slack@1.2.0
+        action: post_message
+        input:
+          channel: "{{ inputs.notification_channel }}"
+          text: "{{ steps.format_report.output.text }}"
+
+    outputs:
+      report_text:
+        value: "{{ steps.format_report.output.text }}"
+        description: Generated weather report
+
+  # Weather alert workflow
+  - name: Weather Alert Monitor
+    version: 1.0.0
+    description: Monitor weather conditions and send alerts for extreme conditions
+
+    inputs:
+      locations:
+        type: array
+        description: Locations to monitor
+        default: ["San Francisco", "New York"]
+
+      temperature_threshold:
+        type: number
+        description: Alert if temperature exceeds this (Celsius)
+        default: 35
+
+      wind_threshold:
+        type: number
+        description: Alert if wind speed exceeds this (km/h)
+        default: 50
+
+    triggers:
+      - type: schedule
+        cron: "*/30 * * * *"  # Every 30 minutes
+
+    steps:
+      # Check weather for all locations
+      - name: check_weather
+        connector: connector:community/weather@1.0.0
+        action: get_current_weather
+        for_each: "{{ inputs.locations }}"
+        parallel: true
+        input:
+          location: "{{ item }}"
+
+      # Filter extreme conditions
+      - name: find_alerts
+        connector: connector:community/data@1.0.0
+        action: filter
+        input:
+          data: "{{ steps.check_weather.output }}"
+          conditions:
+            - field: temperature
+              operator: ">"
+              value: "{{ inputs.temperature_threshold }}"
+            - field: windspeed
+              operator: ">"
+              value: "{{ inputs.wind_threshold }}"
+
+      # Send alerts if any extreme conditions found
+      - name: send_alerts
+        connector: connector:community/pagerduty@1.0.0
+        action: create_incident
+        condition: "{{ steps.find_alerts.output | length > 0 }}"
+        for_each: "{{ steps.find_alerts.output }}"
+        input:
+          severity: high
+          title: "Extreme weather alert: {{ item.location }}"
+          description: |
+            Temperature: {{ item.temperature }}°C
+            Wind speed: {{ item.windspeed }} km/h
+            Time: {{ item.time }}
+
+  # Health check workflow
+  - name: Service Health Check
+    version: 1.0.0
+    description: Monitor weather service health and dependencies
+
+    triggers:
+      - type: schedule
+        cron: "*/5 * * * *"  # Every 5 minutes
+
+    steps:
+      # Check service health
+      - name: check_health
+        connector: connector:community/http@1.0.0
+        action: get
+        input:
+          url: "http://weather-service:8000/healthz"
+        timeout: 10
+
+      # Test actual weather fetch
+      - name: test_weather_fetch
+        connector: connector:community/weather@1.0.0
+        action: get_current_weather
+        input:
+          location: "San Francisco"
+        timeout: 15
+
+      # Alert on failure
+      - name: alert_on_failure
+        connector: connector:community/slack@1.2.0
+        action: post_message
+        condition: "{{ steps.check_health.status != 'success' or steps.test_weather_fetch.status != 'success' }}"
+        input:
+          channel: "#ops-alerts"
+          text: |
+            ⚠️ Weather Service Health Check Failed
+
+            Health endpoint: {{ steps.check_health.status }}
+            Test fetch: {{ steps.test_weather_fetch.status }}
+
+            Error: {{ steps.check_health.error or steps.test_weather_fetch.error }}
+
+    outputs:
+      health_status:
+        value: "{{ steps.check_health.status }}"
+      test_fetch_status:
+        value: "{{ steps.test_weather_fetch.status }}"

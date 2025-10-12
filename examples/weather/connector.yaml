@@ -1,0 +1,130 @@
+connector:
+  type: connector
+  kind: http
+  name: weather
+  namespace: community
+  version: 1.0.0
+  displayName: Weather Tool
+  description: Get current weather conditions and forecasts for any location using Open-Meteo API
+  author: OpenWorkflow Community
+  homepage: https://docs.openworkflowspec.org/connectors/weather
+  repository: https://github.com/Open-Workflow/connector-weather
+  license: MIT
+  categories: [weather, forecast, api]
+
+  runtime:
+    memory: 512MB
+    timeout: 30
+
+actions:
+  - name: get_current_weather
+    description: Fetch current weather conditions for a location
+
+    input:
+      type: object
+      properties:
+        location:
+          type: string
+          description: City name, address, or coordinates (lat,lon)
+          examples: ["San Francisco", "New York, NY", "40.7128,-74.0060"]
+      required: [location]
+
+    output:
+      type: object
+      properties:
+        location:
+          type: string
+          description: Resolved location name
+        latitude:
+          type: number
+          description: Location latitude
+        longitude:
+          type: number
+          description: Location longitude
+        temperature:
+          type: number
+          description: Current temperature in Celsius
+        windspeed:
+          type: number
+          description: Wind speed in km/h
+        wind_direction:
+          type: number
+          description: Wind direction in degrees
+        weather_code:
+          type: integer
+          description: WMO weather code
+        time:
+          type: string
+          description: Observation timestamp (ISO 8601)
+        status:
+          type: string
+          enum: [success, error]
+
+    handler:
+      http:
+        url: http://weather-service:8000/execute
+        method: POST
+        timeout: 10
+        retry:
+          max_attempts: 3
+          backoff: exponential
+          backoff_factor: 0.5
+
+  - name: get_forecast
+    description: Get 7-day weather forecast for a location
+
+    input:
+      type: object
+      properties:
+        location:
+          type: string
+          description: City name, address, or coordinates
+        days:
+          type: integer
+          description: Number of forecast days (1-7)
+          default: 7
+          minimum: 1
+          maximum: 7
+      required: [location]
+
+    output:
+      type: object
+      properties:
+        location:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        forecast:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                description: Date (YYYY-MM-DD)
+              temperature_max:
+                type: number
+                description: Max temperature in Celsius
+              temperature_min:
+                type: number
+                description: Min temperature in Celsius
+              precipitation:
+                type: number
+                description: Total precipitation in mm
+              weather_code:
+                type: integer
+                description: WMO weather code
+        status:
+          type: string
+          enum: [success, error]
+
+    handler:
+      http:
+        url: http://weather-service:8000/execute
+        method: POST
+        timeout: 10
+        retry:
+          max_attempts: 3
+          backoff: exponential

@@ -1,0 +1,175 @@
+connector:
+  type: connector
+  kind: sdk
+  name: calculator
+  namespace: community
+  version: 1.0.0
+  displayName: Calculator
+  description: Basic mathematical operations and calculations
+  author: OpenWorkflow Community
+  homepage: https://docs.openworkflowspec.org/connectors/calculator
+  license: MIT
+  categories: [math, utility]
+
+  runtime:
+    timeout: 5
+
+actions:
+  - name: add
+    description: Add two numbers
+
+    input:
+      type: object
+      properties:
+        a:
+          type: number
+          description: First number
+        b:
+          type: number
+          description: Second number
+      required: [a, b]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+          description: Sum of a and b
+
+    handler:
+      function: calculator.add
+
+  - name: subtract
+    description: Subtract two numbers
+
+    input:
+      type: object
+      properties:
+        a:
+          type: number
+          description: First number
+        b:
+          type: number
+          description: Number to subtract
+      required: [a, b]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+
+    handler:
+      function: calculator.subtract
+
+  - name: multiply
+    description: Multiply two numbers
+
+    input:
+      type: object
+      properties:
+        a:
+          type: number
+        b:
+          type: number
+      required: [a, b]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+
+    handler:
+      function: calculator.multiply
+
+  - name: divide
+    description: Divide two numbers
+
+    input:
+      type: object
+      properties:
+        a:
+          type: number
+          description: Dividend
+        b:
+          type: number
+          description: Divisor (cannot be zero)
+      required: [a, b]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+
+    handler:
+      function: calculator.divide
+
+  - name: power
+    description: Raise a number to a power
+
+    input:
+      type: object
+      properties:
+        base:
+          type: number
+          description: Base number
+        exponent:
+          type: number
+          description: Exponent
+      required: [base, exponent]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+
+    handler:
+      function: calculator.power
+
+  - name: sqrt
+    description: Calculate square root
+
+    input:
+      type: object
+      properties:
+        value:
+          type: number
+          description: Number to find square root of
+          minimum: 0
+      required: [value]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+
+    handler:
+      function: calculator.sqrt
+
+  - name: percentage
+    description: Calculate percentage of a number
+
+    input:
+      type: object
+      properties:
+        value:
+          type: number
+          description: The value
+        percent:
+          type: number
+          description: Percentage to calculate
+      required: [value, percent]
+
+    output:
+      type: object
+      properties:
+        result:
+          type: number
+          description: The calculated percentage
+
+    handler:
+      function: calculator.percentage

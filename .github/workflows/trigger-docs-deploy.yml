@@ -1,0 +1,24 @@
+name: Trigger Docs Deployment
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'specs/**'
+      - 'README.md'
+      - 'CHANGELOG.md'
+      - 'CONTRIBUTING.md'
+      - 'examples/**'
+
+jobs:
+  trigger-docs:
+    name: Trigger Documentation Site Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger docs repository dispatch
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DOCS_DEPLOY_TOKEN }}
+          repository: Open-Workflow/OpenWorkflow-Docs
+          event-type: spec-updated

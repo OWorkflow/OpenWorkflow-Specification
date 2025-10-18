@@ -35,6 +35,103 @@ Examples:
 - `agent:acme/code-reviewer@2.1.0`
 - `agent:research-labs/data-analyst@0.3.0`
 
+## JSON Schema Definition
+
+The formal JSON Schema for agent validation:
+
+```json
+{
+  "$id": "https://spec.openworkflow.dev/v0/agent.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenWorkflow Agent",
+  "type": "object",
+  "required": ["agent", "model", "instructions", "tools", "runtime"],
+  "properties": {
+    "registryMode": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, enforces stricter validation for public registry publishing."
+    },
+    "agent": {
+      "type": "object",
+      "required": ["id"],
+      "properties": { "id": { "type": "string", "minLength": 1 } }
+    },
+    "model": {
+      "type": "object",
+      "required": ["provider", "name"],
+      "properties": {
+        "provider": { "type": "string" },
+        "name": { "type": "string" },
+        "params": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "instructions": {
+      "type": "object",
+      "required": ["system"],
+      "properties": {
+        "system": { "type": "string", "minLength": 1 },
+        "goals": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "input_schema": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "runtime": {
+      "type": "string",
+      "enum": ["smartify", "langchain", "agentkit", "vertexai", "anthropic", "any"]
+    },
+    "io": {
+      "type": "object",
+      "properties": {
+        "output_schema": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "extensions": { "type": "object", "additionalProperties": true }
+  },
+  "additionalProperties": false,
+
+  "allOf": [
+    {
+      "if": {
+        "properties": { "registryMode": { "const": true } }
+      },
+      "then": {
+        "description": "In registry mode, input/output schemas become mandatory.",
+        "properties": {
+          "tools": {
+            "items": {
+              "required": ["name", "input_schema"]
+            }
+          },
+          "io": {
+            "required": ["output_schema"]
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Registry Mode:**
+When `registryMode: true` is set (used for public registry publishing), the following additional validations apply:
+- All tools must have `input_schema` defined
+- The `io.output_schema` becomes required
+
+This ensures registry-published agents have complete API contracts for consumers.
+
 ## Agent Manifest Structure
 
 ### Complete Example
